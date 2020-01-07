@@ -29,6 +29,8 @@ var reForCredentialComponent = regexp.MustCompile(
 	`^Credential=\w+\/\d+\/([\w-_]+)\/(\w+)\/aws4_request$`,
 )
 
+const jwtToken = "jkaewiufwaiuefqwf789239y8234y89"
+
 // newAmzDate parses a date string using the AWS signer time format
 func newAmzDate(amzDateStr string) (time.Time, error) {
 	if amzDateStr == "" {

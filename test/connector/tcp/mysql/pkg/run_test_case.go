@@ -3,6 +3,7 @@ package pkg
 import (
 	"fmt"
 	"os/exec"
+	"strconv"
 	"strings"
 
 	"github.com/cyberark/secretless-broker/test/util/testutil"
@@ -48,6 +49,46 @@ func RunQuery(
 
 	cmdOut, err := exec.Command("mysql", args...).CombinedOutput()
 
+	// Post command logs
+	//TODO: deal with verbose
+	if testutil.Verbose {
+		if err != nil {
+			convey.Println("--->> RESULTS")
+			convey.Println("----- ERROR: ")
+			convey.Println(err.Error())
+		}
+		convey.Println("----- OUTPUT: ")
+		convey.Println(string(cmdOut))
+	}
+	convey.Println("---<< END")
+	convey.Println("")
+
+	return string(cmdOut), err
+}
+
+// RunJDBCQuery runs a simply test query for the given client configuration and port.
+func RunJDBCQuery(
+	clientConfig testutil.ClientConfiguration,
+	connectPort testutil.ConnectionPort,
+) (string, error) {
+	const jdbcJARPath = "/secretless/test/util/jdbc/jdbc.jar"
+
+	args := []string{
+		"-jar", jdbcJARPath,
+		"-d", "mysql",
+		"-m", "mysql",
+		"-h", fmt.Sprintf("%s:%d", connectPort.Host(), connectPort.Port),
+		"-U", clientConfig.Username,
+		"-P", clientConfig.Password,
+		strconv.Quote("select count(*) from testdb.test"),
+	}
+
+	// Pre command logs
+	convey.Println("")
+	convey.Println("---<< EXECUTED")
+
+	cmdOut, err := exec.Command("java", args...).CombinedOutput()
+	fmt.Println(args)
 	// Post command logs
 	//TODO: deal with verbose
 	if testutil.Verbose {

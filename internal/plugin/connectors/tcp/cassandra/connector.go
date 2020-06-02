@@ -22,10 +22,16 @@ func (connector *SingleUseConnector) Connect(
 	connDetails, _ := NewConnectionDetails(credentialValuesByID)
 
 	host := gocql.JoinHostPort(connDetails.Host, connDetails.Port)
-	backendConn, err := net.Dial("tcp", host)
-	if err != nil {
-		return nil, err
-	}
 
-	return backendConn, nil
+	cluster := gocql.NewCluster(host)
+	cluster.Authenticator = gocql.PasswordAuthenticator{
+		Username: "user",
+		Password: "password",
+	}
+	cluster.Keyspace = "example"
+	cluster.Consistency = gocql.Quorum
+	session, _ := cluster.CreateSession()
+
+	backendConn := session.GetConn()
+	return backendConn.Conn, nil
 }

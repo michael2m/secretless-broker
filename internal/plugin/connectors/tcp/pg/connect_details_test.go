@@ -1,6 +1,7 @@
 package pg
 
 import (
+	"github.com/cyberark/secretless-broker/internal/plugin/connectors/tcp/ssl"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -20,7 +21,7 @@ func TestExpectedFields(t *testing.T) {
 		Username:   "myusername",
 		Password:   "mypassword",
 		Options:    map[string]string{},
-		SSLOptions: map[string]string{},
+		SSLOptions: ssl.NewSSLOptions(options),
 	}
 
 	actualConnectionDetails, err := NewConnectionDetails(options)
@@ -50,12 +51,7 @@ func TestSSLOptions(t *testing.T) {
 		Username: "myusername",
 		Password: "mypassword",
 		Options:  map[string]string{},
-		SSLOptions: map[string]string{
-			"sslrootcert": "mysslrootcert",
-			"sslmode":     "mysslmode",
-			"sslkey":      "mysslkey",
-			"sslcert":     "mysslcert",
-		},
+		SSLOptions: ssl.NewSSLOptions(options),
 	}
 
 	actualConnectionDetails, err := NewConnectionDetails(options)
@@ -79,7 +75,7 @@ func TestDefaultPort(t *testing.T) {
 		Username:   "myusername",
 		Password:   "mypassword",
 		Options:    map[string]string{},
-		SSLOptions: map[string]string{},
+		SSLOptions: ssl.NewSSLOptions(options),
 	}
 
 	actualConnectionDetails, err := NewConnectionDetails(options)

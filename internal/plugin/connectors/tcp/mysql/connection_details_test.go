@@ -1,6 +1,7 @@
 package mysql
 
 import (
+	"github.com/cyberark/secretless-broker/internal/plugin/connectors/tcp/ssl"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -17,9 +18,7 @@ func TestExpectedFields(t *testing.T) {
 
 	expectedConnDetails := ConnectionDetails{
 		Host: "myhost",
-		Options: map[string]string{
-			"sslmode": "disable",
-		},
+		Options: ssl.NewSSLOptions(credentials),
 		Password: "mypassword",
 		Port:     1234,
 		Username: "myusername",
@@ -45,9 +44,7 @@ func TestDefaultPort(t *testing.T) {
 		Port:     DefaultMySQLPort,
 		Username: "myusername",
 		Password: "mypassword",
-		Options: map[string]string{
-			"sslmode": "",
-		},
+		Options: ssl.NewSSLOptions(credentials),
 	}
 
 	actualConnDetails, err := NewConnectionDetails(credentials)
@@ -55,30 +52,6 @@ func TestDefaultPort(t *testing.T) {
 
 	if err == nil {
 		assert.EqualValues(t, expectedConnDetails, *actualConnDetails)
-	}
-}
-
-func TestUnexpectedFieldsAreSavedAsOptions(t *testing.T) {
-	credentials := map[string][]byte{
-		"host":     []byte("myhost"),
-		"port":     []byte("1234"),
-		"foo":      []byte("5432"),
-		"username": []byte("myusername"),
-		"bar":      []byte("data"),
-		"password": []byte("mypassword"),
-	}
-
-	expectedOptions := map[string]string{
-		"foo":     "5432",
-		"bar":     "data",
-		"sslmode": "",
-	}
-
-	actualConnDetails, err := NewConnectionDetails(credentials)
-	assert.Nil(t, err)
-
-	if err == nil {
-		assert.EqualValues(t, expectedOptions, (*actualConnDetails).Options)
 	}
 }
 

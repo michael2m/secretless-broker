@@ -7,18 +7,38 @@ import (
 	"net"
 )
 
-type options map[string]string
-
 // DbSSLMode holds information about the DB's SSL options.
 type DbSSLMode struct {
 	tls.Config
 	UseTLS       bool
 	VerifyCaOnly bool
-	Options      options
+	Options      Options
 }
 
+// Options represents supported ssl configuration options
+type Options struct {
+	sslMode 	string
+	sslRootCert	string
+	sslKey		string
+	sslCert		string
+}
+
+const (
+	// Currently supported ssl modes
+	SSLModeDisable 		= "disable"
+	SSLModeRequire 		= "require"
+	SSLModeVerifyCa 	= "verify-ca"
+	SSLModeVerifyFull 	= "verify-full"
+
+	// Currently supported ssl configuration keys
+	SSLMode 			= "sslmode"
+	SSLRootCert			= "sslrootcert"
+	SSLKey				= "sslkey"
+	SSLCert				= "sslcert"
+)
+
 // NewDbSSLMode configures and creates a DbSSLMode
-func NewDbSSLMode(o options, requireCanVerifyCAOnly bool) (DbSSLMode, error) {
+func NewDbSSLMode(o *Options, requireCanVerifyCAOnly bool) (DbSSLMode, error) {
 	// NOTE for the "require" case:
 	//
 	// From http://www.postgresql.org/docs/current/static/libpq-ssl.html:
@@ -29,14 +49,14 @@ func NewDbSSLMode(o options, requireCanVerifyCAOnly bool) (DbSSLMode, error) {
 	// server certificate is validated against the CA. Relying on this
 	// behavior is discouraged, and applications that need certificate
 	// validation should always use verify-ca or verify-full.
-	sslMode := DbSSLMode{Options: o, UseTLS: true}
+	sslMode := DbSSLMode{Options: *o, UseTLS: true}
 
-	switch mode := o["sslmode"]; mode {
-	case "disable":
+	switch mode := o.sslMode; mode {
+	case SSLModeDisable:
 		sslMode.UseTLS = false
 		return sslMode, nil
 		// "require" is the default.
-	case "", "require":
+	case "", SSLModeRequire:
 		// Skip TLS's own verification: it requires full verification since Go 1.3.
 		sslMode.InsecureSkipVerify = true
 
@@ -51,10 +71,10 @@ func NewDbSSLMode(o options, requireCanVerifyCAOnly bool) (DbSSLMode, error) {
 
 		// MySQL on the other hand notes in its docs that it ignores
 		// SSL certs if supplied in REQUIRED sslmode.
-		if requireCanVerifyCAOnly && len(o["sslrootcert"]) > 0 {
+		if requireCanVerifyCAOnly && len(o.sslRootCert) > 0 {
 			sslMode.VerifyCaOnly = true
 		}
-	case "verify-ca":
+	case SSLModeVerifyCa:
 		// Skip TLS's own verification: it requires full verification since Go 1.3.
 		sslMode.InsecureSkipVerify = true
 		sslMode.VerifyCaOnly = true
@@ -99,14 +119,14 @@ func HandleSSLUpgrade(connection net.Conn, tlsConf DbSSLMode) (net.Conn, error) 
 
 // sslClientCertificates adds the certificate specified in the "sslcert" and
 // "sslkey" settings
-func sslClientCertificates(tlsConf *tls.Config, o options) error {
+func sslClientCertificates(tlsConf *tls.Config, o Options) error {
 	// The client certificate is only loaded if the setting is not blank.
-	sslcert := o["sslcert"]
+	sslcert := o.sslCert
 	if len(sslcert) == 0 {
 		return nil
 	}
 
-	sslkey := o["sslkey"]
+	sslkey := o.sslKey
 
 	certPEMBlock := []byte(sslcert)
 	keyPEMBlock := []byte(sslkey)
@@ -121,9 +141,9 @@ func sslClientCertificates(tlsConf *tls.Config, o options) error {
 }
 
 // sslCertificateAuthority adds the RootCA specified in the "sslrootcert" setting.
-func sslCertificateAuthority(tlsConf *tls.Config, o options) error {
+func sslCertificateAuthority(tlsConf *tls.Config, o Options) error {
 	// The root certificate is only loaded if the setting is not blank.
-	if sslrootcert := o["sslrootcert"]; len(sslrootcert) > 0 {
+	if sslrootcert := o.sslRootCert; len(sslrootcert) > 0 {
 		tlsConf.RootCAs = x509.NewCertPool()
 
 		cert := []byte(sslrootcert)
@@ -158,4 +178,31 @@ func sslVerifyCertificateAuthority(client *tls.Conn, tlsConf *tls.Config) error 
 	}
 	_, err = certs[0].Verify(opts)
 	return err
+}
+
+func NewSSLOptions(credentials map[string][]byte) *Options {
+	options := &Options{}
+
+	if len(credentials[SSLMode]) > 0 {
+		options.sslMode = string(credentials[SSLMode])
+	}
+
+	if len(credentials[SSLRootCert]) > 0 {
+		options.sslRootCert = string(credentials[SSLRootCert])
+	}
+
+	if len(credentials[SSLKey]) > 0 {
+		options.sslKey = string(credentials[SSLKey])
+	}
+
+	if len(credentials[SSLCert]) > 0 {
+		options.sslCert = string(credentials[SSLCert])
+	}
+
+	delete(credentials, SSLMode)
+	delete(credentials, SSLRootCert)
+	delete(credentials, SSLKey)
+	delete(credentials, SSLCert)
+
+	return options
 }

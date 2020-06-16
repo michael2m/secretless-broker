@@ -1,19 +1,13 @@
 package pg
 
 import (
+	"github.com/cyberark/secretless-broker/internal/plugin/connectors/tcp/ssl"
 	"net"
 )
 
 // DefaultPostgresPort is the default port for Postgres database connections
 // over TCP
 const DefaultPostgresPort = "5432"
-
-var sslOptions = []string{
-	"sslrootcert",
-	"sslmode",
-	"sslkey",
-	"sslcert",
-}
 
 // ConnectionDetails stores the connection info to the target database.
 type ConnectionDetails struct {
@@ -22,7 +16,7 @@ type ConnectionDetails struct {
 	Username   string
 	Password   string
 	Options    map[string]string
-	SSLOptions map[string]string
+	SSLOptions *ssl.Options
 }
 
 // Address provides an aggregation of Host and Port fields into a format
@@ -36,7 +30,7 @@ func (cd *ConnectionDetails) Address() string {
 func NewConnectionDetails(options map[string][]byte) (*ConnectionDetails, error) {
 	connectionDetails := ConnectionDetails{
 		Options:    make(map[string]string),
-		SSLOptions: make(map[string]string),
+		SSLOptions: &ssl.Options{},
 	}
 
 	if len(options["host"]) > 0 {
@@ -73,15 +67,7 @@ func NewConnectionDetails(options map[string][]byte) (*ConnectionDetails, error)
 		connectionDetails.Password = string(options["password"])
 	}
 
-	for _, sslOption := range sslOptions {
-		if len(options[sslOption]) > 0 {
-			value := string(options[sslOption])
-			if value != "" {
-				connectionDetails.SSLOptions[sslOption] = value
-			}
-		}
-		delete(options, sslOption)
-	}
+	connectionDetails.SSLOptions = ssl.NewSSLOptions(options)
 
 	delete(options, "host")
 	delete(options, "port")

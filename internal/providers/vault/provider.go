@@ -2,6 +2,7 @@ package vault
 
 import (
 	"fmt"
+	"github.com/cyberark/secretless-broker/internal/providers/vault/auth"
 	"strings"
 
 	vault "github.com/hashicorp/vault/api"
@@ -15,18 +16,18 @@ type Provider struct {
 	Client *vault.Client
 }
 
-// ProviderFactory constructs a Provider. The API client is configured from
-// environment variables. Underlying Vault API client by default uses:
-// - VAULT_ADDR: endpoint of Vault, e.g. http://vault:8200/
-// - VAULT_TOKEN: token to login to Vault
+// ProviderFactory constructs a Provider for Vault. It uses the Vault API client.
 // See Vault API docs at https://godoc.org/github.com/hashicorp/vault/api
 func ProviderFactory(options plugin_v1.ProviderOptions) (plugin_v1.Provider, error) {
 	config := vault.DefaultConfig()
-
 	var client *vault.Client
 	var err error
 	if client, err = vault.NewClient(config); err != nil {
-		return nil, fmt.Errorf("ERROR: Could not create Vault provider: %s", err)
+		return nil, fmt.Errorf("HashiCorp Vault provider client failed: %s", err)
+	}
+
+	if err = auth.Authenticate(client); err != nil {
+		return nil, err
 	}
 
 	provider := &Provider{

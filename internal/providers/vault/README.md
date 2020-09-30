@@ -6,6 +6,9 @@ on the [Vault API client](https://pkg.go.dev/github.com/hashicorp/vault/api) in
 Go. It reads the secret object from the configured path and returns the value
 navigated to by the configured fields (or default field otherwise).
 
+Please note that Vault API client uses the environment variable `VAULT_ADDR` to
+determine the URL to the Vault API base endpoint, e.g. `https://localhost:8200`.
+
 ## Usage Documentation
 
 The Vault provider is configured in the `secretless.yml` using:
@@ -86,9 +89,44 @@ services:
     ...
 ```
 
+## Auth Methods
+
+Vault supports various auth methods. To direct the provider to use a specific
+auth method, the environment variable `VAULT_AUTH_METHOD` must be set to a
+valid value. This is currently `AppRole` or `Token`. If the variable is not set,
+the auth method `Token` is implied, for backwards compatibility.
+
+### Token
+
+Token auth method is the default and minimal auth method in Vault. It requires
+the token to use in the environment variable `VAULT_TOKEN`. No additional
+authentication steps are performed.
+
+Configure the the Token auth method as follows:
+
+```
+VAULT_AUTH_METHOD=Token
+VAULT_TOKEN=...         # some valid Vault token
+```
+
+### AppRole
+
+AppRole auth method requires a role ID and a secret ID. The latter may be
+wrapped, requiring an unwrapping first. This is referred to as the pull mode.
+The provider uses the following environment variables for the AppRole auth
+method:
+
+```
+VAULT_AUTH_METHOD=AppRole
+VAULT_APPROLE_ROLE_ID=...   # some valid AppRole role ID
+VAULT_APPROLE_SECRET_ID=... # some valid AppRole secret ID, may be wrapped
+VAULT_APPROLE_UNWRAP=0      # some truthy value, true indicates unwrapping 
+```
+
 ## Limitations
 
-- Only token-based login to Vault supported at the moment.
+- Only Token and basic AppRole auth methods to Vault supported at the moment.
+- Only environment variables are supported o configure auth methods.
 - Only secrets that are "read" in Vault are supported at the moment. Backends
   that require "writes" to obtain the secret (e.g. PKI, dynamic database
   credentials) are not supported at the moment.
